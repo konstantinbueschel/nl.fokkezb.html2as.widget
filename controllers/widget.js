@@ -86,86 +86,135 @@ function _versionCompare(v1, v2, options) {
 } // END _versionCompare()
 
 
-$.applyProperties = function applyProperties(props) {
-
-	if (props.html) {
-		$.html = props.html;
+function _processArg(obj, key) {
+	
+	var arg = null;
+	
+	if (obj) {
+		
+		arg = obj[key] || null;
+		delete obj[key];
 	}
+	
+	return arg;
+	
+} // END _processArg()
 
-	if (props.linkColor) {
 
-		$.linkColor = props.linkColor;
-
-		delete props.linkColor;
-	}
-
-	$.label.applyProperties(props);
-};
-
-$.on = $.addEventListener = function (name, callback) {
-	return $.label.addEventListener(name, callback);
-};
-
-$.off = $.removeEventListener = function (name, callback) {
-	return $.label.removeEventListener(name, callback);
-};
-
-$.trigger = $.fireEvent = function (name, e) {
-	return $.label.fireEvent(name, e);
-};
-
-$.setHtml = function setHtml(html) {
-
-	if (OS_IOS || (OS_ANDROID && !!~_versionCompare(TI_VERSION, '3.6.0'))) {
-
-		html2as(html, function handle(err, as) {
-
-			if (err) {
-
-				Ti.API.error(LTAG, err);
-			}
-			else {
-
-				if (_.isString($.linkColor) && !_.isEmpty($.linkColor)) {
-
-					as.attributes.forEach(function (attribute) {
-
-						if (attribute.type === Ti.UI.ATTRIBUTE_LINK) {
-
-							as.addAttribute({
-
-								type:  Ti.UI.ATTRIBUTE_FOREGROUND_COLOR,
-								value: $.linkColor,
-								range: attribute.range
-							});
-
-							as.addAttribute({
-
-								type:  Ti.UI.ATTRIBUTE_UNDERLINE_COLOR,
-								value: $.linkColor,
-								range: attribute.range
-							});
-						}
-					});
+/**
+ * SEF to organize otherwise inline constructor code
+ *
+ * @private
+ * @param {Object} args
+ * @returns void
+ */
+(function constructor(args) {
+	
+	// variable declaration
+	$._html = null;
+	
+	
+	// PUBLIC INTERFACE
+	$.applyProperties = function applyProperties(props) {
+		
+		props.html && ($.html = props.html);
+		
+		$.linkColor = _processArg(props, 'linkColor');
+		
+		$.showLinkUnderline = !!_processArg(props, 'showLinkUnderline');
+		
+		$.label.applyProperties(props);
+		
+	}; // END appplyProperties()
+	
+	
+	$.on = $.addEventListener = function (name, callback) {
+		return $.label.addEventListener(name, callback);
+	};
+	
+	
+	$.off = $.removeEventListener = function (name, callback) {
+		return $.label.removeEventListener(name, callback);
+	};
+	
+	
+	$.trigger = $.fireEvent = function (name, e) {
+		return $.label.fireEvent(name, e);
+	};
+	
+	
+	$.setHtml = function setHtml(html) {
+		
+		if (OS_IOS || (OS_ANDROID && !!~_versionCompare(TI_VERSION, '3.6.0'))) {
+			
+			html2as(html, function handle(err, as) {
+				
+				if (err) {
+					
+					Ti.API.error(LTAG, err);
 				}
-
-				$.label.attributedString = as;
-			}
-		});
-	}
-	else {
-
-		$.label.html = html;
-	}
-};
-
-$.getHtml = function getHtml() {
-	return $.label.html;
-};
-
-Object.defineProperty($, 'html', {
-	get: $.getHtml,
-	set: $.setHtml
-});
-
-$.applyProperties($.args);
+				else {
+					
+					$._html = html;
+					
+					var adjustLinkColor = _.isString($.linkColor) && !_.isEmpty($.linkColor);
+					
+					if (adjustLinkColor || $.showLinkUnderline) {
+						
+						as.attributes.forEach(function (attribute) {
+							
+							if (attribute.type === Ti.UI.ATTRIBUTE_LINK && adjustLinkColor) {
+								
+								as.addAttribute({
+									
+									type:  Ti.UI.ATTRIBUTE_FOREGROUND_COLOR,
+									value: $.linkColor,
+									range: attribute.range
+								});
+								
+								$.showLinkUnderline && adjustLinkColor && as.addAttribute({
+									
+									type:  Ti.UI.ATTRIBUTE_UNDERLINE_COLOR,
+									value: $.linkColor,
+									range: attribute.range
+								});
+								
+								$.showLinkUnderline || as.addAttribute({
+									
+									type:  Ti.UI.ATTRIBUTE_UNDERLINES_STYLE,
+									value: Ti.UI.ATTRIBUTE_UNDERLINE_STYLE_NONE,
+									range: attribute.range
+								});
+							}
+						});
+					}
+					
+					$.label.attributedString = as;
+				}
+			});
+		}
+		else {
+			
+			$._html = html;
+			$.label.html = html;
+		}
+	};
+	
+	
+	$.getHtml = function getHtml() {
+		
+		return $._html;
+	};
+	
+	
+	Object.defineProperty($, 'html', {
+		
+		get: $.getHtml,
+		set: $.setHtml
+	});
+	
+	
+	// initialization
+	$.applyProperties(args);
+	
+})($.args);
